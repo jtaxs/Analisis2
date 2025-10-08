@@ -1,0 +1,3 @@
+@echo off
+echo Starting the Next.js development server...
+start cmd /k "npm run dev"

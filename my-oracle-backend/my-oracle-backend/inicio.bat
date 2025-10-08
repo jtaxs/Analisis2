@@ -1,0 +1,3 @@
+@echo off
+echo Iniciando el proyecto...
+start cmd /k "npm run start:dev"

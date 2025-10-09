@@ -42,7 +42,7 @@ const IgssParamForm: React.FC<IgssParamFormProps> = ({ open, onClose, onSubmit, 
     >
       {(formik) => (
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={3}>
             <TextField fullWidth margin="dense" id="igsAnio" name="igsAnio" label="Año" type="number"
               value={formik.values.igsAnio} onChange={formik.handleChange} onBlur={formik.handleBlur}
               error={formik.touched.igsAnio && Boolean(formik.errors.igsAnio)} helperText={formik.touched.igsAnio && formik.errors.igsAnio} />

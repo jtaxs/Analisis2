@@ -31,7 +31,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   // --- PEGA EL ENLACE DE TU IMAGEN AQUÍ ---
-  const imageUrl = "https://images.pexels.com/photos/669619/pexels-photo-669619.jpe";
+  const imageUrl = "https://images.pexels.com/photos/669619/pexels-photo-669619.jpeg";
 
   const formik = useFormik({
     initialValues: {

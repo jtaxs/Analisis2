@@ -26,15 +26,19 @@ export class NomAusenciaService {
   async create(createNomAusenciaDto: CreateNomAusenciaDto): Promise<NomAusencia> {
     const { conContratoId, ausFechaInicio, ausFechaFin } = createNomAusenciaDto;
 
-    const tieneTraslape = await this.verificarTraslape(conContratoId, new Date(ausFechaInicio), new Date(ausFechaFin));
+    const tieneTraslape = await this.verificarTraslape(
+      conContratoId,
+      new Date(ausFechaInicio),
+      new Date(ausFechaFin),
+    );
     if (tieneTraslape) {
       throw new ConflictException(`Ya existe una ausencia registrada que se traslapa con las fechas proporcionadas.`);
     }
 
     const ausencia = this.ausenciaRepository.create({
-        ...createNomAusenciaDto,
-        ausFechaInicio: new Date(ausFechaInicio),
-        ausFechaFin: new Date(ausFechaFin),
+      ...createNomAusenciaDto,
+      ausFechaInicio: new Date(ausFechaInicio),
+      ausFechaFin: new Date(ausFechaFin),
     });
     return this.ausenciaRepository.save(ausencia);
   }
@@ -54,7 +58,12 @@ export class NomAusenciaService {
     }
     return ausencia;
   }
-  
+
+  // ✅ NUEVO: Alias para usar desde el controlador como `findOne`
+  async findOne(id: number): Promise<NomAusencia> {
+    return this.getConstancia(id);
+  }
+
   async update(id: number, updateNomAusenciaDto: UpdateNomAusenciaDto): Promise<NomAusencia> {
     const ausencia = await this.getConstancia(id);
     this.ausenciaRepository.merge(ausencia, updateNomAusenciaDto);
@@ -69,7 +78,6 @@ export class NomAusenciaService {
 
   // --- Implementación de Procedimientos ---
 
-  // Procedimiento 1: Resumen de Ausencias por Empleado
   async getResumenPorContrato(contratoId: number) {
     const ausencias = await this.ausenciaRepository.findBy({ conContratoId: contratoId });
     const resumen = ausencias.reduce((acc, curr) => {
@@ -84,7 +92,6 @@ export class NomAusenciaService {
     return resumen;
   }
 
-  // Procedimiento 2: Ausencias Mensuales
   async getResumenMensual(anio: number, mes: number): Promise<NomAusencia[]> {
     const primerDia = new Date(anio, mes - 1, 1);
     const ultimoDia = new Date(anio, mes, 0);
@@ -93,13 +100,13 @@ export class NomAusenciaService {
         ausFechaInicio: LessThanOrEqual(ultimoDia),
         ausFechaFin: MoreThanOrEqual(primerDia),
       },
-      relations: ['contrato']
+      relations: ['contrato'],
     });
   }
 
-  // Procedimiento 3: Alerta de Ausencias Injustificadas
   async getAlertaInjustificadas(limite: number, tipo: string = 'INJUSTIFICADA') {
-    return this.ausenciaRepository.createQueryBuilder('ausencia')
+    return this.ausenciaRepository
+      .createQueryBuilder('ausencia')
       .select('ausencia.conContratoId', 'contratoId')
       .addSelect('COUNT(ausencia.ausAusenciaId)', 'cantidadInjustificada')
       .where('LOWER(ausencia.ausTipo) = LOWER(:tipo)', { tipo })
@@ -108,7 +115,6 @@ export class NomAusenciaService {
       .getRawMany();
   }
 
-  // Procedimiento 4: Calcular Descuento por Ausencias No Remuneradas
   async calcularDescuento(contratoId: number, anio: number, mes: number) {
     const contrato = await this.contratoRepository.findOneBy({ conContratoId: contratoId });
     if (!contrato) throw new NotFoundException(`Contrato con ID ${contratoId} no encontrado`);
@@ -122,43 +128,40 @@ export class NomAusenciaService {
         ausRemunerada: 'N',
         ausFechaInicio: LessThanOrEqual(ultimoDia),
         ausFechaFin: MoreThanOrEqual(primerDia),
-      }
+      },
     });
 
     const salarioDiario = contrato.conSalarioBase / 30;
     let diasADescontar = 0;
-    ausencias.forEach(a => {
-        diasADescontar += this.getDaysBetween(a.ausFechaInicio, a.ausFechaFin);
+    ausencias.forEach((a) => {
+      diasADescontar += this.getDaysBetween(a.ausFechaInicio, a.ausFechaFin);
     });
 
     return {
-        contratoId,
-        salarioBase: contrato.conSalarioBase,
-        salarioDiario: parseFloat(salarioDiario.toFixed(2)),
-        diasADescontar,
-        montoTotalDescuento: parseFloat((salarioDiario * diasADescontar).toFixed(2))
+      contratoId,
+      salarioBase: contrato.conSalarioBase,
+      salarioDiario: parseFloat(salarioDiario.toFixed(2)),
+      diasADescontar,
+      montoTotalDescuento: parseFloat((salarioDiario * diasADescontar).toFixed(2)),
     };
   }
 
-  // Procedimiento 5: Verificar Traslape de Ausencias
   async verificarTraslape(contratoId: number, fechaInicio: Date, fechaFin: Date): Promise<boolean> {
     const count = await this.ausenciaRepository.count({
       where: {
         conContratoId: contratoId,
         ausFechaInicio: LessThanOrEqual(fechaFin),
         ausFechaFin: MoreThanOrEqual(fechaInicio),
-      }
+      },
     });
     return count > 0;
   }
-  
-  // Procedimiento 7: Ausencias Prolongadas
+
   async getAusenciasProlongadas(dias: number): Promise<NomAusencia[]> {
     const ausencias = await this.ausenciaRepository.find({ relations: ['contrato'] });
-    return ausencias.filter(a => this.getDaysBetween(a.ausFechaInicio, a.ausFechaFin) > dias);
+    return ausencias.filter((a) => this.getDaysBetween(a.ausFechaInicio, a.ausFechaFin) > dias);
   }
 
-  // Procedimiento 9: Eliminar Ausencias por Contrato
   async removePorContrato(contratoId: number): Promise<{ message: string }> {
     const resultado = await this.ausenciaRepository.delete({ conContratoId: contratoId });
     if (resultado.affected === 0) {
@@ -167,17 +170,16 @@ export class NomAusenciaService {
     return { message: `${resultado.affected} registros de ausencia eliminados para el contrato ID ${contratoId}.` };
   }
 
-  // Procedimiento 10: Total Días Ausentes entre Fechas
   async getTotalDiasAusentesPorRango(contratoId: number, fechaInicio: Date, fechaFin: Date) {
     const ausencias = await this.ausenciaRepository.find({
-        where: {
-            conContratoId: contratoId,
-            ausFechaInicio: LessThanOrEqual(fechaFin),
-            ausFechaFin: MoreThanOrEqual(fechaInicio),
-        }
+      where: {
+        conContratoId: contratoId,
+        ausFechaInicio: LessThanOrEqual(fechaFin),
+        ausFechaFin: MoreThanOrEqual(fechaInicio),
+      },
     });
     let totalDias = 0;
-    ausencias.forEach(a => totalDias += this.getDaysBetween(a.ausFechaInicio, a.ausFechaFin));
+    ausencias.forEach((a) => (totalDias += this.getDaysBetween(a.ausFechaInicio, a.ausFechaFin)));
     return { contratoId, fechaInicio, fechaFin, totalDias };
   }
 }

@@ -34,7 +34,7 @@ import { NomAuditLogModule } from './nom-audit-log/nom-audit-log.module';
       type: 'oracle',
       host: 'localhost',
       port: 1521,
-      sid: 'xe',
+      sid: 'orcl',
       username: 'NOMINA_GT',
       password: '123456',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
